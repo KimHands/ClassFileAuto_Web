@@ -9,7 +9,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="flex min-h-screen flex-col antialiased">
+        <main className="flex-1">{children}</main>
+        <footer className="py-4 text-center text-xs text-slate-600">
+          <p>Made by SCH CSE 23학번 김종건</p>
+          <p className="mt-0.5">© {new Date().getFullYear()} KIM JONG GUN. All rights reserved.</p>
+        </footer>
+      </body>
     </html>
   )
 }
