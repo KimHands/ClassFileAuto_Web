@@ -76,7 +76,11 @@ export default function LoginPage() {
 
           {/* 개인정보 제3자 제공 동의 (개인정보보호법 제17조 제1항 제1호) */}
           <div className="mb-4 rounded-lg bg-slate-700/50 p-3 text-xs text-slate-400">
-            <p className="mb-2 font-semibold text-slate-300">개인정보 제3자 제공 동의</p>
+            <p className="mb-1 font-semibold text-slate-300">개인정보 제3자 제공 동의</p>
+            <p className="mb-2 text-slate-500">
+              이 서비스는 Vercel 외부 서버를 통해 동작합니다. 로그인 시 학번·비밀번호가
+              해당 서버를 경유하므로 아래 내용을 확인 후 동의해 주세요.
+            </p>
             <table className="w-full border-collapse text-xs">
               <tbody>
                 <tr className="border-b border-slate-600">
