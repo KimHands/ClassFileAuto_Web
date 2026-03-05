@@ -40,7 +40,7 @@ function lxHeaders(token: string): Record<string, string> {
   }
 }
 
-async function delay(ms = 700) {
+async function delay(ms = 200) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
