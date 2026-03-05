@@ -35,12 +35,17 @@ export async function POST(req: NextRequest) {
   try {
     result = await login(String(studentId), String(password))
   } catch (e) {
-    console.error('[login] 로그인 오류:', e)
-    return NextResponse.json({ error: '로그인 중 오류가 발생했습니다' }, { status: 500 })
+    console.error('[login] 네트워크/런타임 오류:', e)
+    return NextResponse.json({ error: '학교 서버에 연결할 수 없습니다. 네트워크 상태를 확인하거나 잠시 후 다시 시도해주세요.' }, { status: 502 })
   }
 
   if (!result.success) {
-    return NextResponse.json({ error: '학번 또는 비밀번호가 올바르지 않습니다' }, { status: 401 })
+    const isCredentialError = result.errorType === 'credentials'
+    console.error('[login] 로그인 실패:', result.error)
+    return NextResponse.json(
+      { error: result.error },
+      { status: isCredentialError ? 401 : 502 },
+    )
   }
 
   const session = await getSession()

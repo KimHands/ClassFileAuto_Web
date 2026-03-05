@@ -53,6 +53,7 @@ export interface LoginResult {
   token?: string
   userId?: string
   error?: string
+  errorType?: 'credentials' | 'server'
 }
 
 export async function login(studentId: string, password: string): Promise<LoginResult> {
@@ -65,7 +66,7 @@ export async function login(studentId: string, password: string): Promise<LoginR
   )
 
   if (!finalUrl.includes('sso.sch.ac.kr')) {
-    return { success: false, error: 'SSO 로그인 페이지로 리다이렉트되지 않았습니다' }
+    return { success: false, error: 'SSO 서버로 연결되지 않았습니다. 학교 서버 상태를 확인해주세요.', errorType: 'server' }
   }
 
   // 2. RSA 키 + 폼 데이터 파싱
@@ -73,7 +74,7 @@ export async function login(studentId: string, password: string): Promise<LoginR
   try {
     pageData = parseLoginPage(loginHtml)
   } catch (e) {
-    return { success: false, error: `로그인 페이지 파싱 실패: ${e}` }
+    return { success: false, error: '로그인 페이지 구조를 읽을 수 없습니다. 학교 서버가 변경되었을 수 있습니다.', errorType: 'server' }
   }
 
   // 3. JSON 전체를 RSA PKCS1v15 암호화
@@ -115,7 +116,7 @@ export async function login(studentId: string, password: string): Promise<LoginR
 
   const token = jar.get('xn_api_token')
   if (!token) {
-    return { success: false, error: '로그인 실패 (학번/비밀번호를 확인해주세요)' }
+    return { success: false, error: '학번 또는 비밀번호가 올바르지 않습니다.', errorType: 'credentials' }
   }
 
   // 6. medlms 대시보드에서 data-user_id 추출
