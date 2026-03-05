@@ -1,6 +1,10 @@
 import { getIronSession, SessionOptions } from 'iron-session'
 import { cookies } from 'next/headers'
 
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  throw new Error('SESSION_SECRET 환경변수가 없거나 너무 짧습니다 (최소 32자)')
+}
+
 export interface SessionData {
   isLoggedIn: boolean
   token: string
@@ -9,7 +13,7 @@ export interface SessionData {
 }
 
 export const sessionOptions: SessionOptions = {
-  password: process.env.SESSION_SECRET!,
+  password: process.env.SESSION_SECRET,
   cookieName: 'eclass_session',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
