@@ -17,9 +17,8 @@ export class CookieJar {
     }
   }
 
-  header(exclude?: Set<string>): string {
+  header(): string {
     return Array.from(this.store.entries())
-      .filter(([k]) => !exclude?.has(k))
       .map(([k, v]) => `${k}=${v}`)
       .join('; ')
   }
