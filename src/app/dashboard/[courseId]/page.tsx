@@ -64,7 +64,7 @@ export default function CourseFilesPage({
   }
 
   function downloadFile(file: Attachment) {
-    const proxyUrl = `/api/download?url=${encodeURIComponent(file.url)}`
+    const proxyUrl = `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.filename)}`
     const a = document.createElement('a')
     a.href = proxyUrl
     a.download = file.filename
