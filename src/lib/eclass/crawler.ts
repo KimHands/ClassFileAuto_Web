@@ -353,7 +353,8 @@ async function getCommonsDownloadUrl(token: string, contentId: string): Promise<
 
   const xml = await resp.text()
   const match = xml.match(/<content_download_uri>([^<]+)<\/content_download_uri>/)
-  if (match?.[1]) return COMMONS_BASE + match[1]
+  // XML 엔티티 디코딩 (&amp; → &). Python ET는 자동 처리하지만 regex는 직접 처리 필요
+  if (match?.[1]) return COMMONS_BASE + match[1].replace(/&amp;/g, '&')
 
   return ''
 }
