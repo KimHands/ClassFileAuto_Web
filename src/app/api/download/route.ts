@@ -4,6 +4,47 @@ import { getSession } from '@/lib/session'
 // Vercel Pro: 60초, Hobby: 10초 (제한 있음)
 export const maxDuration = 60
 
+const ALLOWED_HOSTS = ['medlms.sch.ac.kr', 'commons.sch.ac.kr', 'eclass.sch.ac.kr', 'sso.sch.ac.kr']
+
+function isAllowedHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname
+    return ALLOWED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))
+  } catch {
+    return false
+  }
+}
+
+// redirect: 'follow'는 크로스 도메인 리다이렉트 시 Cookie를 드랍함.
+// 수동으로 리다이렉트를 따라가면서 매 hop마다 인증 쿠키를 포함.
+async function fetchWithAuth(startUrl: string, token: string): Promise<Response> {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Cookie: `xn_api_token=${token}`,
+    'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
+    Referer: 'https://medlms.sch.ac.kr/learningx/dashboard',
+  }
+
+  let currentUrl = startUrl
+  for (let i = 0; i < 10; i++) {
+    const resp = await fetch(currentUrl, { headers, redirect: 'manual' })
+
+    if (resp.status >= 300 && resp.status < 400) {
+      const location = resp.headers.get('location')
+      if (!location) break
+      const nextUrl = new URL(location, currentUrl).href
+      if (!isAllowedHost(nextUrl)) break  // 허용 도메인 벗어나면 중단
+      currentUrl = nextUrl
+      continue
+    }
+
+    return resp
+  }
+
+  throw new Error('리다이렉트 처리 실패')
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSession()
   if (!session.isLoggedIn) {
@@ -18,24 +59,11 @@ export async function GET(req: NextRequest) {
   const filename = req.nextUrl.searchParams.get('filename') ?? ''
 
   // URL 화이트리스트: SCH 도메인만 허용 (SSRF 방지)
-  const allowed = ['medlms.sch.ac.kr', 'commons.sch.ac.kr', 'eclass.sch.ac.kr']
-  const urlHost = new URL(url).hostname
-  if (!allowed.some((h) => urlHost === h || urlHost.endsWith(`.${h}`))) {
+  if (!isAllowedHost(url)) {
     return NextResponse.json({ error: '허용되지 않는 도메인입니다' }, { status: 403 })
   }
 
-  // 로그인 시 수집한 전체 SSO 쿠키 사용 (xn_api_token만으로는 commons 파일 다운로드 불가)
-  const cookieHeader = session.cookieHeader || `xn_api_token=${session.token}`
-  const resp = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${session.token}`,
-      Cookie: cookieHeader,
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
-      Referer: 'https://medlms.sch.ac.kr/learningx/dashboard',
-    },
-    redirect: 'follow',
-  })
+  const resp = await fetchWithAuth(url, session.token)
 
   if (!resp.ok) {
     return NextResponse.json({ error: `파일 다운로드 실패 (${resp.status})` }, { status: resp.status })
