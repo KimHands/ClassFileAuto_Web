@@ -28,13 +28,18 @@ async function fetchWithAuth(startUrl: string, token: string): Promise<Response>
 
   let currentUrl = startUrl
   for (let i = 0; i < 10; i++) {
+    console.log(`[download] hop ${i}: GET ${currentUrl}`)
     const resp = await fetch(currentUrl, { headers, redirect: 'manual' })
+    console.log(`[download] hop ${i}: status=${resp.status} content-type=${resp.headers.get('content-type')} location=${resp.headers.get('location')}`)
 
     if (resp.status >= 300 && resp.status < 400) {
       const location = resp.headers.get('location')
       if (!location) break
       const nextUrl = new URL(location, currentUrl).href
-      if (!isAllowedHost(nextUrl)) break  // 허용 도메인 벗어나면 중단
+      if (!isAllowedHost(nextUrl)) {
+        console.log(`[download] 허용 도메인 벗어남, 중단: ${nextUrl}`)
+        break
+      }
       currentUrl = nextUrl
       continue
     }
