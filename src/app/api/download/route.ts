@@ -20,7 +20,6 @@ function isAllowedHost(url: string): boolean {
 async function fetchWithAuth(startUrl: string, token: string, commonsCookie: string): Promise<Response> {
   let currentUrl = startUrl
   for (let i = 0; i < 10; i++) {
-    console.log(`[dl] hop${i} GET ${currentUrl}`)
     const isCommons = new URL(currentUrl).hostname.includes('commons.sch.ac.kr')
     // commons는 PHP 세션 쿠키 + xn_api_token, 그 외는 xn_api_token만
     const cookie = isCommons && commonsCookie
@@ -38,16 +37,11 @@ async function fetchWithAuth(startUrl: string, token: string, commonsCookie: str
       redirect: 'manual',
     })
 
-    console.log(`[dl] hop${i} status=${resp.status} ct=${resp.headers.get('content-type')} loc=${resp.headers.get('location')}`)
-
     if (resp.status >= 300 && resp.status < 400) {
       const location = resp.headers.get('location')
       if (!location) break
       const nextUrl = new URL(location, currentUrl).href
-      if (!isAllowedHost(nextUrl)) {
-        console.log(`[dl] 허용 도메인 벗어남: ${nextUrl}`)
-        break
-      }
+      if (!isAllowedHost(nextUrl)) break
       currentUrl = nextUrl
       continue
     }
