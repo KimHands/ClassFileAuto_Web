@@ -50,8 +50,9 @@ export async function GET(req: NextRequest) {
   // → 서버의 깨진 한글 파일명이나 inline disposition 문제 방지
   let contentDisposition: string
   if (filename) {
+    // RFC 6266: filename*= 만 사용 (filename=""에 비ASCII 문자 넣으면 헤더 오류 발생)
     const encoded = encodeURIComponent(filename)
-    contentDisposition = `attachment; filename="${filename}"; filename*=UTF-8''${encoded}`
+    contentDisposition = `attachment; filename*=UTF-8''${encoded}`
   } else {
     contentDisposition = resp.headers.get('content-disposition') ?? 'attachment'
   }
