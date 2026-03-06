@@ -17,16 +17,13 @@ function isAllowedHost(url: string): boolean {
 
 // redirect: 'follow'는 크로스 도메인 리다이렉트 시 Cookie를 드랍함.
 // 수동으로 리다이렉트를 따라가면서 매 hop마다 인증 쿠키를 포함.
-async function fetchWithAuth(startUrl: string, token: string, commonsCookie: string): Promise<Response> {
+async function fetchWithAuth(startUrl: string, token: string, sessionCookies: string): Promise<Response> {
+  // SSO 세션 쿠키 전체 + xn_api_token을 매 hop마다 포함
+  // → medlms /files/ 다운로드가 SSO 체인으로 리다이렉트돼도 자동 인증 통과
+  const cookie = sessionCookies ? `${sessionCookies}; xn_api_token=${token}` : `xn_api_token=${token}`
+
   let currentUrl = startUrl
   for (let i = 0; i < 10; i++) {
-    console.log(`[dl] hop${i} GET ${currentUrl}`)
-    const isCommons = new URL(currentUrl).hostname.includes('commons.sch.ac.kr')
-    // commons는 PHP 세션 쿠키 + xn_api_token, 그 외는 xn_api_token만
-    const cookie = isCommons && commonsCookie
-      ? `${commonsCookie}; xn_api_token=${token}`
-      : `xn_api_token=${token}`
-
     const resp = await fetch(currentUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -38,16 +35,11 @@ async function fetchWithAuth(startUrl: string, token: string, commonsCookie: str
       redirect: 'manual',
     })
 
-    console.log(`[dl] hop${i} status=${resp.status} ct=${resp.headers.get('content-type')} loc=${resp.headers.get('location')}`)
-
     if (resp.status >= 300 && resp.status < 400) {
       const location = resp.headers.get('location')
       if (!location) break
       const nextUrl = new URL(location, currentUrl).href
-      if (!isAllowedHost(nextUrl)) {
-        console.log(`[dl] 허용 도메인 벗어남: ${nextUrl}`)
-        break
-      }
+      if (!isAllowedHost(nextUrl)) break
       currentUrl = nextUrl
       continue
     }
@@ -76,7 +68,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: '허용되지 않는 도메인입니다' }, { status: 403 })
   }
 
-  const resp = await fetchWithAuth(url, session.token, session.commonsCookie ?? '')
+  const resp = await fetchWithAuth(url, session.token, session.sessionCookies ?? '')
 
   if (!resp.ok) {
     return NextResponse.json({ error: `파일 다운로드 실패 (${resp.status})` }, { status: resp.status })

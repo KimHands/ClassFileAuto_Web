@@ -10,7 +10,7 @@ export interface SessionData {
   token: string
   userId: string
   studentId: string
-  commonsCookie: string  // commons.sch.ac.kr PHP 세션 쿠키
+  sessionCookies: string  // xn_api_token 제외한 SSO/medlms/commons 세션 쿠키
 }
 
 export const sessionOptions: SessionOptions = {

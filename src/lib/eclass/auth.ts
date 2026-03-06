@@ -53,7 +53,7 @@ export interface LoginResult {
   success: boolean
   token?: string
   userId?: string
-  commonsCookie?: string
+  sessionCookies?: string  // xn_api_token 제외한 전체 SSO 세션 쿠키
   error?: string
   errorType?: 'credentials' | 'server'
 }
@@ -131,14 +131,15 @@ export async function login(studentId: string, password: string): Promise<LoginR
   const userId = $('#root').attr('data-user_id') ?? ''
 
   // 7. commons.sch.ac.kr 세션 수립 (XE 기반 → PHP 세션 쿠키 필요)
-  //    SSO 쿠키가 있는 상태로 접속하면 자동 인증 후 세션 쿠키 발급
-  const beforeKeys = jar.keys()
   try {
     await fetchWithCookies(COMMONS_BASE, { jar, method: 'GET' })
   } catch {
     // commons 접속 실패해도 로그인 자체는 성공으로 처리
   }
-  const commonsCookie = jar.newCookiesSince(beforeKeys)
 
-  return { success: true, token, userId, commonsCookie }
+  // xn_api_token은 이미 별도 저장 → 나머지 SSO/medlms/commons 세션 쿠키만 저장
+  // (SSO 쿠키가 있어야 medlms /files/ 다운로드 시 SSO 재인증 체인이 통과됨)
+  const sessionCookies = jar.header(new Set(['xn_api_token']))
+
+  return { success: true, token, userId, sessionCookies }
 }
