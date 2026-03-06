@@ -16,6 +16,7 @@ const ECLASS_BASE = 'https://eclass.sch.ac.kr'
 const SSO_BASE = 'https://sso.sch.ac.kr'
 const SSO_VERIFY_URL = `${SSO_BASE}/oa/au/auth/verify`
 const MEDLMS_BASE = 'https://medlms.sch.ac.kr'
+const COMMONS_BASE = 'https://commons.sch.ac.kr'
 
 interface LoginPageData {
   modulus: string
@@ -52,6 +53,7 @@ export interface LoginResult {
   success: boolean
   token?: string
   userId?: string
+  commonsCookie?: string
   error?: string
   errorType?: 'credentials' | 'server'
 }
@@ -128,5 +130,15 @@ export async function login(studentId: string, password: string): Promise<LoginR
   const $ = load(dashHtml)
   const userId = $('#root').attr('data-user_id') ?? ''
 
-  return { success: true, token, userId }
+  // 7. commons.sch.ac.kr 세션 수립 (XE 기반 → PHP 세션 쿠키 필요)
+  //    SSO 쿠키가 있는 상태로 접속하면 자동 인증 후 세션 쿠키 발급
+  const beforeKeys = jar.keys()
+  try {
+    await fetchWithCookies(COMMONS_BASE, { jar, method: 'GET' })
+  } catch {
+    // commons 접속 실패해도 로그인 자체는 성공으로 처리
+  }
+  const commonsCookie = jar.newCookiesSince(beforeKeys)
+
+  return { success: true, token, userId, commonsCookie }
 }

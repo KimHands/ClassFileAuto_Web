@@ -10,6 +10,7 @@ export interface SessionData {
   token: string
   userId: string
   studentId: string
+  commonsCookie: string  // commons.sch.ac.kr PHP 세션 쿠키
 }
 
 export const sessionOptions: SessionOptions = {

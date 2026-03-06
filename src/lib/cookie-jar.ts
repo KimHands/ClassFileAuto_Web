@@ -26,6 +26,18 @@ export class CookieJar {
   get(name: string): string | undefined {
     return this.store.get(name)
   }
+
+  keys(): Set<string> {
+    return new Set(this.store.keys())
+  }
+
+  // beforeKeys 이후에 새로 추가된 쿠키만 반환 (특정 도메인 접근 후 diff 추출용)
+  newCookiesSince(beforeKeys: Set<string>): string {
+    return Array.from(this.store.entries())
+      .filter(([k]) => !beforeKeys.has(k))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('; ')
+  }
 }
 
 export interface FetchOptions {
