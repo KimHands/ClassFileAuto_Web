@@ -52,6 +52,7 @@ export interface LoginResult {
   success: boolean
   token?: string
   userId?: string
+  cookieHeader?: string
   error?: string
   errorType?: 'credentials' | 'server'
 }
@@ -128,5 +129,5 @@ export async function login(studentId: string, password: string): Promise<LoginR
   const $ = load(dashHtml)
   const userId = $('#root').attr('data-user_id') ?? ''
 
-  return { success: true, token, userId }
+  return { success: true, token, userId, cookieHeader: jar.header() }
 }

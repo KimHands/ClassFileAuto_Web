@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
   session.token = result.token!
   session.userId = result.userId!
   session.studentId = studentId
+  session.cookieHeader = result.cookieHeader!
   await session.save()
 
   return NextResponse.json({ success: true })

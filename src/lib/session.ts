@@ -10,6 +10,7 @@ export interface SessionData {
   token: string
   userId: string
   studentId: string
+  cookieHeader: string
 }
 
 export const sessionOptions: SessionOptions = {

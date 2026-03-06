@@ -24,10 +24,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: '허용되지 않는 도메인입니다' }, { status: 403 })
   }
 
+  // 로그인 시 수집한 전체 SSO 쿠키 사용 (xn_api_token만으로는 commons 파일 다운로드 불가)
+  const cookieHeader = session.cookieHeader || `xn_api_token=${session.token}`
   const resp = await fetch(url, {
     headers: {
       Authorization: `Bearer ${session.token}`,
-      Cookie: `xn_api_token=${session.token}`,
+      Cookie: cookieHeader,
       'User-Agent':
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
       Referer: 'https://medlms.sch.ac.kr/learningx/dashboard',
