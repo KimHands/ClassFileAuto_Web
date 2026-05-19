@@ -1,8 +1,21 @@
-# SCH Eclass 파일 다운로더
+# SCH Eclass 파일 다운로더 (Web)
 
-순천향대학교 Eclass(medlms.sch.ac.kr) 강의 자료를 웹 브라우저에서 편리하게 다운로드할 수 있는 서비스입니다.
+> 순천향대 Eclass(medlms.sch.ac.kr) 강의 자료를 **브라우저에서** 모아 다운로드. SSO RSA 암호화 · iron-session 기반 보안 설계
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![iron-session](https://img.shields.io/badge/iron--session-AES-7A5AF8)](https://github.com/vvo/iron-session)
+[![Vercel](https://img.shields.io/badge/Vercel-Tokyo%20hnd1-000000?logo=vercel&logoColor=white)](https://vercel.com)
 
 **배포 주소**: https://class-file-auto-web.vercel.app/
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `medlms.sch.ac.kr` (SSO + LearningX) |
+| 형태 | Vercel 서버리스 웹 앱 |
+| 본인 담당 | 단독 개발 (SSO 인증 · API 라우트 · 보안 설계 · 법적 근거 검토) |
+| 관련 저장소 | CLI 버전: [classfileauto](https://github.com/KimHands/classfileauto) |
 
 ---
 
@@ -68,12 +81,19 @@ web/
 
 ## 인증 흐름
 
-```
-eclass.sch.ac.kr/mypage
-  → SSO 리다이렉트 체인
-  → RSA 암호화 로그인 (sso.sch.ac.kr)
-  → medlms.sch.ac.kr xn_api_token 획득
-  → iron-session 암호화 쿠키 저장
+```mermaid
+flowchart LR
+    User[사용자]
+    Eclass[eclass.sch.ac.kr<br/>/mypage]
+    SSO[sso.sch.ac.kr<br/>RSA 암호화 로그인]
+    Medlms[medlms.sch.ac.kr<br/>xn_api_token 획득]
+    Session[(iron-session<br/>AES 암호화 쿠키)]
+
+    User -->|학번/비밀번호 입력| Eclass
+    Eclass -->|SSO 리다이렉트| SSO
+    SSO --> Medlms
+    Medlms --> Session
+    Session -->|HttpOnly 쿠키| User
 ```
 
 ---
