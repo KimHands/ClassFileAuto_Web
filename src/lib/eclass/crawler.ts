@@ -33,6 +33,20 @@ export interface Attachment {
   filename: string
   url: string
   uploaded_at: string
+  // proxy: 서버(/api/download)가 받아 전달 가능
+  // browser: Canvas 직링크(verifier 없음) → medlms 세션 필요, 브라우저 새 탭으로 열어야 함
+  via?: 'proxy' | 'browser'
+}
+
+// 다운로드 경로 판별.
+// - commons content.php: 다운로드 시점에 verifier URL을 해석하므로 proxy 가능
+// - medlms /files/.../download: verifier가 있으면 proxy 가능, 없으면 Canvas 세션(JS)이 필요해 browser
+function downloadVia(url: string): 'proxy' | 'browser' {
+  if (url.includes('/uniplayer_support/content.php')) return 'proxy'
+  if (url.includes('/files/') && url.includes('/download')) {
+    return url.includes('verifier=') ? 'proxy' : 'browser'
+  }
+  return 'proxy'
 }
 
 function lxHeaders(token: string): Record<string, string> {
@@ -112,13 +126,13 @@ export async function fetchAttachments(
     getAssignmentFiles(token, courseId),
   ])
 
-  // 중복 제거
+  // 중복 제거 + 다운로드 경로 분류
   const seen = new Set<string>()
   const unique: Attachment[] = []
   for (const att of [...content, ...board, ...assignment]) {
     if (!seen.has(att.file_id)) {
       seen.add(att.file_id)
-      unique.push(att)
+      unique.push({ ...att, via: downloadVia(att.url) })
     }
   }
   return unique
