@@ -23,6 +23,7 @@ export default function CourseFilesPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState<Set<string>>(new Set())
+  const [fileErrors, setFileErrors] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     fetch(`/api/courses/${courseId}/files`)
@@ -63,26 +64,66 @@ export default function CourseFilesPage({
     }
   }
 
-  function downloadFile(file: Attachment) {
-    const proxyUrl = `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.filename)}`
-    const a = document.createElement('a')
-    a.href = proxyUrl
-    a.download = file.filename
-    a.click()
+  function setFileError(fileId: string, msg: string | null) {
+    setFileErrors((prev) => {
+      const next = new Map(prev)
+      msg ? next.set(fileId, msg) : next.delete(fileId)
+      return next
+    })
   }
 
-  async function downloadSelected() {
-    const targets = files.filter((f) => selected.has(f.file_id))
-    for (const file of targets) {
-      setDownloading((prev) => new Set(prev).add(file.file_id))
-      downloadFile(file)
-      // 연속 다운로드 시 브라우저 제한 방지
-      await new Promise((r) => setTimeout(r, 800))
+  // fetch로 받아 blob 다운로드. 실패 시 사유를 화면에 표시한다.
+  async function downloadFile(file: Attachment): Promise<boolean> {
+    setDownloading((prev) => new Set(prev).add(file.file_id))
+    setFileError(file.file_id, null)
+    try {
+      const proxyUrl = `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.filename)}`
+      const res = await fetch(proxyUrl)
+
+      if (res.status === 401) {
+        router.push('/')
+        return false
+      }
+      if (!res.ok) {
+        let msg = `다운로드 실패 (${res.status})`
+        try {
+          const d = await res.json()
+          if (d?.error) msg = d.error
+        } catch {
+          /* JSON이 아니면 기본 메시지 유지 */
+        }
+        setFileError(file.file_id, msg)
+        return false
+      }
+
+      const blob = await res.blob()
+      const objUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objUrl
+      a.download = file.filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objUrl)
+      return true
+    } catch {
+      setFileError(file.file_id, '네트워크 오류로 다운로드에 실패했습니다. 잠시 후 다시 시도해주세요.')
+      return false
+    } finally {
       setDownloading((prev) => {
         const next = new Set(prev)
         next.delete(file.file_id)
         return next
       })
+    }
+  }
+
+  async function downloadSelected() {
+    const targets = files.filter((f) => selected.has(f.file_id))
+    for (const file of targets) {
+      await downloadFile(file)
+      // 연속 다운로드 시 브라우저 제한 방지
+      await new Promise((r) => setTimeout(r, 600))
     }
   }
 
@@ -103,7 +144,7 @@ export default function CourseFilesPage({
       <main className="mx-auto max-w-2xl px-4 py-6">
         {loading && (
           <div className="text-center text-slate-400">
-            파일 목록 불러오는 중... (강의에 따라 최대 30초 소요)
+            파일 목록 불러오는 중...
           </div>
         )}
 
@@ -154,6 +195,11 @@ export default function CourseFilesPage({
                       {file.uploaded_at && (
                         <p className="text-xs text-slate-500">
                           {file.uploaded_at.slice(0, 10)}
+                        </p>
+                      )}
+                      {fileErrors.has(file.file_id) && (
+                        <p className="mt-0.5 text-xs text-red-400">
+                          ⚠ {fileErrors.get(file.file_id)}
                         </p>
                       )}
                     </div>
