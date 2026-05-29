@@ -185,14 +185,25 @@ export default function CourseFilesPage({
     }
   }
 
-  // 선택 다운로드: 실제 파일만 일괄 다운로드. 영상·medlms(↗)는 팝업 차단 때문에
-  // 일괄로 못 열어 분리하고, 끝나면 개별로 열라고 안내한다.
+  // 선택 다운로드:
+  //  - medlms 본문첨부(text_): 직접 다운로드 URL이라 클릭 제스처 내에서 바로 새 탭으로 연다
+  //  - 실제 파일: 서버 프록시로 순차 다운로드 (진행률)
+  //  - 영상: 서버에서 서명 URL을 해석해야 해(async) 일괄로 못 열어 개별 안내
   async function downloadSelected() {
     const targets = files.filter((f) => selected.has(f.file_id))
+    const medlmsGroup = targets.filter((f) => kindOf(f) === 'medlms')
     const fileGroup = targets.filter((f) => kindOf(f) === 'file')
-    const openGroup = targets.filter((f) => kindOf(f) !== 'file')
+    const videoGroup = targets.filter((f) => kindOf(f) === 'video')
 
     setOpenNotice(0)
+
+    // 1) medlms 본문첨부: 제스처 내에서 바로 새 탭 (한꺼번에 여러 개면 브라우저가 팝업 허용을 물을 수 있음)
+    for (const f of medlmsGroup) {
+      window.open(f.url, '_blank', 'noopener')
+      markDone(f.file_id)
+    }
+
+    // 2) 실제 파일: 순차 다운로드
     if (fileGroup.length) {
       setBulk({ active: true, done: 0, total: fileGroup.length })
       for (let i = 0; i < fileGroup.length; i++) {
@@ -202,7 +213,9 @@ export default function CourseFilesPage({
       }
       setBulk({ active: false, done: 0, total: 0 })
     }
-    if (openGroup.length) setOpenNotice(openGroup.length)
+
+    // 3) 영상만 개별 안내 (서버 해석 필요)
+    if (videoGroup.length) setOpenNotice(videoGroup.length)
   }
 
   const allSelected = selected.size === files.length && files.length > 0
@@ -279,8 +292,8 @@ export default function CourseFilesPage({
               <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-900/25 px-3 py-2 text-xs text-amber-200/90">
                 <span>↗</span>
                 <span>
-                  영상·본문 첨부 <b>{openNotice}개</b>는 한꺼번에 못 열어요(브라우저 차단). 아래 목록에서{' '}
-                  <b>↗ 버튼을 하나씩</b> 눌러 새 탭으로 열어주세요.
+                  영상 <b>{openNotice}개</b>는 서버가 미리 받아둘 수 없어, 아래 목록에서{' '}
+                  <b>↗ 버튼을 하나씩</b> 눌러 새 탭에서 받아주세요.
                 </span>
               </div>
             )}
@@ -289,7 +302,7 @@ export default function CourseFilesPage({
             {hasOpenKind && openNotice === 0 && (
               <p className="mb-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2 text-xs text-slate-400">
                 <span className="text-amber-300/90">↗</span> 표시(영상·강의콘텐츠 본문 첨부)는 서버가 대신 받을 수 없어
-                medlms 새 탭에서 열립니다. (medlms 로그인이 필요할 수 있어요)
+                medlms 새 탭에서 열립니다. 여러 개를 한꺼번에 받으면 브라우저가 <b>팝업 허용</b>을 물을 수 있어요.
               </p>
             )}
 
