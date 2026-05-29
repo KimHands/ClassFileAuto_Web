@@ -106,12 +106,24 @@ async function resolveCommons(
   const dl = xml.match(/<content_download_uri>([^<]+)<\/content_download_uri>/)
   if (dl?.[1]) return { kind: 'file', url: COMMONS_BASE + dl[1].replace(/&amp;/g, '&') }
 
-  // 2) 동영상: media_uri(.mp4) + auth_value(JWT) → ?token=로 자체 인증되는 직링크
-  const mv = xml.match(/<media_uri[^>]*auth_value="([^"]*)"[^>]*>([^<]+\.mp4)<\/media_uri>/)
-  if (mv?.[1] && mv?.[2]) {
-    const media = mv[2].replace(/&amp;/g, '&')
-    const sep = media.includes('?') ? '&' : '?'
-    return { kind: 'video', url: `${media}${sep}token=${mv[1]}` }
+  // 2) 동영상(video1/.movie, upf/.mp4 공통): 토큰(JWT)의 path 클레임이 실제 파일 경로다.
+  //    ?token=로 자체 인증되는 직링크라 쿠키 없이 브라우저가 바로 받을 수 있다.
+  const tok = xml.match(/auth_value="([^"]+)"[^>]*>([^<]+\.mp4)</)
+  if (tok?.[1]) {
+    const token = tok[1]
+    let path = ''
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
+      if (typeof payload.path === 'string') path = payload.path
+    } catch {
+      /* JWT 파싱 실패 시 아래 fallback */
+    }
+    if (path) return { kind: 'video', url: `${COMMONS_BASE}${path}?token=${token}` }
+    // path가 없고 media 내용 자체가 전체 URL인 경우
+    if (tok[2].startsWith('http')) {
+      const media = tok[2].replace(/&amp;/g, '&')
+      return { kind: 'video', url: `${media}${media.includes('?') ? '&' : '?'}token=${token}` }
+    }
   }
 
   throw new Error('이 콘텐츠는 직접 다운로드를 지원하지 않습니다 (medlms에서 확인해주세요)')
