@@ -9,6 +9,7 @@ interface Attachment {
   filename: string
   url: string
   uploaded_at: string
+  via?: 'proxy' | 'browser'
 }
 
 export default function CourseFilesPage({
@@ -74,6 +75,11 @@ export default function CourseFilesPage({
 
   // fetch로 받아 blob 다운로드. 실패 시 사유를 화면에 표시한다.
   async function downloadFile(file: Attachment): Promise<boolean> {
+    // Canvas 직링크(verifier 없음): 서버 프록시 불가 → medlms 새 탭으로 열어 브라우저 세션으로 다운로드
+    if (file.via === 'browser') {
+      window.open(file.url, '_blank', 'noopener')
+      return true
+    }
     setDownloading((prev) => new Set(prev).add(file.file_id))
     setFileError(file.file_id, null)
     try {
@@ -174,6 +180,14 @@ export default function CourseFilesPage({
               </div>
             </div>
 
+            {/* medlms 직접 열기 안내 */}
+            {files.some((f) => f.via === 'browser') && (
+              <p className="mb-3 rounded-lg bg-amber-900/30 px-3 py-2 text-xs text-amber-300/90">
+                ↗ 표시 파일은 강의콘텐츠·과제 본문 첨부라 서버가 대신 받을 수 없어, medlms 새 탭에서 열립니다.
+                (medlms 로그인이 필요할 수 있어요)
+              </p>
+            )}
+
             {/* 파일 목록 */}
             {files.length === 0 ? (
               <p className="text-center text-slate-400">파일이 없습니다</p>
@@ -192,11 +206,16 @@ export default function CourseFilesPage({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-white">{file.filename}</p>
-                      {file.uploaded_at && (
-                        <p className="text-xs text-slate-500">
-                          {file.uploaded_at.slice(0, 10)}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {file.uploaded_at && (
+                          <p className="text-xs text-slate-500">
+                            {file.uploaded_at.slice(0, 10)}
+                          </p>
+                        )}
+                        {file.via === 'browser' && (
+                          <span className="text-xs text-amber-400/80">medlms에서 열림 ↗</span>
+                        )}
+                      </div>
                       {fileErrors.has(file.file_id) && (
                         <p className="mt-0.5 text-xs text-red-400">
                           ⚠ {fileErrors.get(file.file_id)}
@@ -206,10 +225,10 @@ export default function CourseFilesPage({
                     <button
                       onClick={() => downloadFile(file)}
                       disabled={downloading.has(file.file_id)}
-                      title="다운로드"
+                      title={file.via === 'browser' ? 'medlms에서 열기' : '다운로드'}
                       className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-700 hover:text-white disabled:opacity-40"
                     >
-                      {downloading.has(file.file_id) ? '⏳' : '⬇'}
+                      {downloading.has(file.file_id) ? '⏳' : file.via === 'browser' ? '↗' : '⬇'}
                     </button>
                   </li>
                 ))}
