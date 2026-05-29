@@ -90,15 +90,21 @@ export default function CourseFilesPage({
         router.push('/')
         return false
       }
-      if (!res.ok) {
-        let msg = `다운로드 실패 (${res.status})`
-        try {
-          const d = await res.json()
-          if (d?.error) msg = d.error
-        } catch {
-          /* JSON이 아니면 기본 메시지 유지 */
+
+      // 동영상 등 대용량은 서버가 서명 직링크를 JSON으로 반환 → 새 탭에서 직접 받기
+      const ct = res.headers.get('content-type') ?? ''
+      if (ct.includes('application/json')) {
+        const d = await res.json().catch(() => ({}))
+        if (res.ok && d.redirect) {
+          window.open(d.redirect, '_blank', 'noopener')
+          return true
         }
-        setFileError(file.file_id, msg)
+        setFileError(file.file_id, d.error ?? `다운로드 실패 (${res.status})`)
+        return false
+      }
+
+      if (!res.ok) {
+        setFileError(file.file_id, `다운로드 실패 (${res.status})`)
         return false
       }
 

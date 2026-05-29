@@ -87,20 +87,34 @@ function isCommonsContentPhp(url: string): boolean {
   return url.includes('commons.sch.ac.kr') && url.includes('/uniplayer_support/content.php')
 }
 
-// commons content.php(XML)에서 실제 다운로드 URL을 해석한다.
-async function resolveCommonsUrl(
+type CommonsTarget =
+  | { kind: 'file'; url: string }   // 일반 파일: 서버 프록시로 스트리밍
+  | { kind: 'video'; url: string }  // 동영상: 토큰 붙은 직링크(대용량 → 브라우저가 직접 받음)
+
+// commons content.php(XML)에서 다운로드 대상을 해석한다.
+async function resolveCommons(
   contentPhpUrl: string,
   token: string,
   commonsCookie: string,
-): Promise<string> {
+): Promise<CommonsTarget> {
   const resp = await fetchWithRetry(contentPhpUrl, token, commonsCookie)
   if (!resp.ok) throw new Error(`commons 정보 조회 실패 (${resp.status})`)
 
   const xml = await resp.text()
-  const m = xml.match(/<content_download_uri>([^<]+)<\/content_download_uri>/)
-  // XML 엔티티 디코딩 (&amp; → &)
-  if (!m?.[1]) throw new Error('commons 다운로드 URL을 찾을 수 없습니다 (파일이 아직 공개되지 않았을 수 있음)')
-  return COMMONS_BASE + m[1].replace(/&amp;/g, '&')
+
+  // 1) 일반 파일: content_download_uri (XML 엔티티 디코딩 &amp; → &)
+  const dl = xml.match(/<content_download_uri>([^<]+)<\/content_download_uri>/)
+  if (dl?.[1]) return { kind: 'file', url: COMMONS_BASE + dl[1].replace(/&amp;/g, '&') }
+
+  // 2) 동영상: media_uri(.mp4) + auth_value(JWT) → ?token=로 자체 인증되는 직링크
+  const mv = xml.match(/<media_uri[^>]*auth_value="([^"]*)"[^>]*>([^<]+\.mp4)<\/media_uri>/)
+  if (mv?.[1] && mv?.[2]) {
+    const media = mv[2].replace(/&amp;/g, '&')
+    const sep = media.includes('?') ? '&' : '?'
+    return { kind: 'video', url: `${media}${sep}token=${mv[1]}` }
+  }
+
+  throw new Error('이 콘텐츠는 직접 다운로드를 지원하지 않습니다 (medlms에서 확인해주세요)')
 }
 
 export async function GET(req: NextRequest) {
@@ -124,11 +138,17 @@ export async function GET(req: NextRequest) {
   // commons 파일은 다운로드 시점에 content.php를 해석해 실제 URL을 얻는다.
   let targetUrl = url
   if (isCommonsContentPhp(url)) {
+    let target: CommonsTarget
     try {
-      targetUrl = await resolveCommonsUrl(url, session.token, session.commonsCookie ?? '')
+      target = await resolveCommons(url, session.token, session.commonsCookie ?? '')
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 502 })
     }
+    // 동영상은 대용량이라 프록시 스트리밍 대신 서명 직링크를 클라이언트에 넘겨 새 탭에서 받게 한다.
+    if (target.kind === 'video') {
+      return NextResponse.json({ redirect: target.url })
+    }
+    targetUrl = target.url
   }
 
   let resp: Response
