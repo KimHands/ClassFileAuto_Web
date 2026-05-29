@@ -11,6 +11,10 @@
  *
  * commons.sch.ac.kr:
  *   GET /viewer/ssplayer/uniplayer_support/content.php?content_id=...  → XML 파싱
+ *
+ * ⚠️ 목록 수집 단계에서는 commons content.php를 호출하지 않는다.
+ *    commons 호출은 건당 5~10초로 느려, 목록에서 풀면 Vercel 함수 타임아웃(504)을 유발한다.
+ *    commons 파일은 content.php URL만 담아두고, 실제 다운로드 URL은 /api/download에서 해석한다.
  */
 import { load } from 'cheerio'
 
@@ -40,8 +44,23 @@ function lxHeaders(token: string): Record<string, string> {
   }
 }
 
-async function delay(ms = 200) {
-  return new Promise((r) => setTimeout(r, ms))
+// 상대경로(/...)는 medlms 절대경로로 변환. download 프록시는 절대 URL만 허용한다.
+function toAbsolute(href: string): string {
+  return href.startsWith('/') ? MEDLMS_BASE + href : href
+}
+
+// commons 파일은 content.php URL만 만들어 둔다(네트워크 호출 없음).
+// 실제 다운로드 URL 해석은 다운로드 시점(/api/download)으로 미룬다.
+function commonsContentUrl(contentId: string): string {
+  return `${COMMONS_BASE}/viewer/ssplayer/uniplayer_support/content.php?content_id=${contentId}`
+}
+
+// commons 파일명: content_type을 확장자로 보정
+function withContentTypeExt(filename: string, contentType: string): string {
+  if (filename && contentType && !filename.toLowerCase().endsWith(`.${contentType}`)) {
+    return `${filename}.${contentType}`
+  }
+  return filename
 }
 
 // ── 강의 목록 ──────────────────────────────────────────────────
@@ -121,8 +140,7 @@ async function getContentAttachments(
       for (const subsection of section.subsections ?? []) {
         for (const unit of subsection.units ?? []) {
           for (const comp of unit.components ?? []) {
-            await extractComponentAttachments(token, comp, attachments)
-            await delay()
+            extractComponentAttachments(comp, attachments)
           }
         }
       }
@@ -131,16 +149,14 @@ async function getContentAttachments(
     // fallback: allcomponents_db
     const components = await fetchAllComponentsDb(token, studentId, userId, courseId)
     for (const comp of components) {
-      await extractComponentAttachments(token, comp, attachments)
-      await delay()
+      extractComponentAttachments(comp, attachments)
     }
   }
 
   return attachments
 }
 
-async function extractComponentAttachments(
-  token: string,
+function extractComponentAttachments(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   comp: any,
   attachments: Attachment[],
@@ -153,15 +169,17 @@ async function extractComponentAttachments(
     const contentId: string = commonsInfo.content_id ?? ''
     if (!contentId || contentId === 'not_open') return
 
-    let filename: string = commonsInfo.file_name ?? comp.title ?? ''
-    const contentType: string = commonsInfo.content_type ?? ''
-    if (filename && contentType && !filename.toLowerCase().endsWith(`.${contentType}`)) {
-      filename = `${filename}.${contentType}`
-    }
-
-    const downloadUrl = await getCommonsDownloadUrl(token, contentId)
-    if (downloadUrl && filename) {
-      attachments.push({ file_id: contentId, filename, url: downloadUrl, uploaded_at: unlockAt })
+    const filename = withContentTypeExt(
+      commonsInfo.file_name ?? comp.title ?? '',
+      commonsInfo.content_type ?? '',
+    )
+    if (filename) {
+      attachments.push({
+        file_id: contentId,
+        filename,
+        url: commonsContentUrl(contentId),
+        uploaded_at: unlockAt,
+      })
     }
   } else if (compType === 'text') {
     const description: string = comp.description ?? ''
@@ -173,7 +191,7 @@ async function extractComponentAttachments(
       const filename =
         $(el).find('span.description_file_name').text().trim() || $(el).text().trim()
       if (href && filename) {
-        const absHref = href.startsWith('/') ? MEDLMS_BASE + href : href
+        const absHref = toAbsolute(href)
         const m = absHref.match(/\/files\/(\d+)\/download/)
         const fileId = m?.[1] ?? href
         attachments.push({
@@ -199,25 +217,22 @@ async function getBoardFiles(token: string, courseId: string): Promise<Attachmen
   const resources = await resp.json()
 
   for (const resource of resources) {
-    // 방식 1: commons_content
+    // 방식 1: commons_content → content.php URL만 담아둔다 (다운로드 시점 해석)
     const commonsInfo = resource.commons_content ?? {}
     const contentId: string = commonsInfo.content_id ?? ''
     if (contentId && contentId !== 'not_open') {
-      let filename: string = commonsInfo.file_name ?? ''
-      const contentType: string = commonsInfo.content_type ?? ''
-      if (filename && contentType && !filename.toLowerCase().endsWith(`.${contentType}`)) {
-        filename = `${filename}.${contentType}`
-      }
-      const downloadUrl = await getCommonsDownloadUrl(token, contentId)
-      if (downloadUrl && filename) {
+      const filename = withContentTypeExt(
+        commonsInfo.file_name ?? '',
+        commonsInfo.content_type ?? '',
+      )
+      if (filename) {
         attachments.push({
           file_id: `res_commons_${contentId}`,
           filename,
-          url: downloadUrl,
+          url: commonsContentUrl(contentId),
           uploaded_at: '',
         })
       }
-      await delay()
     }
 
     // 방식 2: description HTML 파일 링크
@@ -229,12 +244,13 @@ async function getBoardFiles(token: string, courseId: string): Promise<Attachmen
         const filename =
           $(el).find('span.description_file_name').text().trim() || $(el).text().trim()
         if (href && filename) {
-          const m = href.match(/\/files\/(\d+)\/download/)
+          const absHref = toAbsolute(href)
+          const m = absHref.match(/\/files\/(\d+)\/download/)
           const fileId = m?.[1] ?? href
           attachments.push({
             file_id: `res_file_${fileId}`,
             filename,
-            url: href,
+            url: absHref,
             uploaded_at: '',
           })
         }
@@ -275,12 +291,13 @@ async function getAssignmentFiles(token: string, courseId: string): Promise<Atta
           const filename =
             $(el).find('span.description_file_name').text().trim() || $(el).text().trim()
           if (href && filename) {
-            const m = href.match(/\/files\/(\d+)\/download/)
+            const absHref = toAbsolute(href)
+            const m = absHref.match(/\/files\/(\d+)\/download/)
             const fileId = m?.[1] ?? href
             attachments.push({
               file_id: `board_post_${postId}_${fileId}`,
               filename,
-              url: href,
+              url: absHref,
               uploaded_at: createdAt,
             })
           }
@@ -296,7 +313,7 @@ async function getAssignmentFiles(token: string, courseId: string): Promise<Atta
           attachments.push({
             file_id: `board_att_${postId}_${fileId}`,
             filename,
-            url: downloadUrl,
+            url: toAbsolute(downloadUrl),
             uploaded_at: createdAt,
           })
         }
@@ -306,7 +323,6 @@ async function getAssignmentFiles(token: string, courseId: string): Promise<Atta
     const pagination = data.pagination ?? {}
     if (page >= (pagination.last_page ?? 1)) break
     page++
-    await delay()
   }
 
   return attachments
@@ -340,21 +356,4 @@ async function fetchAllComponentsDb(
   })
   if (!resp.ok) return []
   return resp.json()
-}
-
-// ── commons 다운로드 URL ───────────────────────────────────────
-
-async function getCommonsDownloadUrl(token: string, contentId: string): Promise<string> {
-  const resp = await fetch(
-    `${COMMONS_BASE}/viewer/ssplayer/uniplayer_support/content.php?content_id=${contentId}`,
-    { headers: { Cookie: `xn_api_token=${token}` } },
-  )
-  if (!resp.ok) return ''
-
-  const xml = await resp.text()
-  const match = xml.match(/<content_download_uri>([^<]+)<\/content_download_uri>/)
-  // XML 엔티티 디코딩 (&amp; → &). Python ET는 자동 처리하지만 regex는 직접 처리 필요
-  if (match?.[1]) return COMMONS_BASE + match[1].replace(/&amp;/g, '&')
-
-  return ''
 }
