@@ -132,34 +132,28 @@ async function canvasDownload(
   token: string,
   authCookie: string,
   studentId: string,
-  dbg?: string[],
 ): Promise<Response> {
   const jar = new CookieJar()
   if (authCookie) jar.seed(authCookie)
   jar.seed(`xn_api_token=${token}`)
-  dbg?.push(`seed cookies: ${authCookie ? authCookie.split(';').length : 0}+token`)
 
-  // 1차: 바로 파일이 나오면 끝, 아니면 result 로그인 페이지
-  let resp = await followWithJar(downloadUrl, jar, { referer: `${MEDLMS_BASE}/learningx/dashboard` })
+  // 1차: 바로 파일이 나오면 끝, 아니면 SSO 바운스를 거쳐 result 로그인 페이지
+  const resp = await followWithJar(downloadUrl, jar, { referer: `${MEDLMS_BASE}/learningx/dashboard` })
   const ct = resp.headers.get('content-type') ?? ''
-  dbg?.push(`1차: ${resp.status} ${ct.slice(0, 20)} url=${resp.url.slice(0, 50)}`)
   if (!ct.includes('text/html')) return resp
 
+  // result 페이지에 박힌 RSA 개인키로 Canvas 비번 복호화
   const html = await resp.text()
   const m = html.match(/window\.loginCryption\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)/)
-  dbg?.push(`loginCryption: ${m ? 'found' : 'NOT FOUND'} (html ${html.length}B)`)
   if (!m) return new Response(null, { status: 401 }) // SSO 만료 등
-
   let password: string
   try {
     password = rsaDecryptPassword(m[1], m[2])
-    dbg?.push(`decrypt ok: pwlen=${password.length}`)
-  } catch (e) {
-    dbg?.push(`decrypt FAIL: ${e instanceof Error ? e.message : e}`)
+  } catch {
     return new Response(null, { status: 502 })
   }
 
-  // 2차: Canvas 세션 수립
+  // 2차: Canvas 세션 수립. Referer(result 페이지)가 없으면 Canvas가 400으로 거부한다.
   const form = new URLSearchParams({
     utf8: '✓',
     redirect_to_ssl: '1',
@@ -168,18 +162,10 @@ async function canvasDownload(
     'pseudonym_session[password]': password,
     'pseudonym_session[remember_me]': '0',
   }).toString()
-  // Referer(result 페이지)가 없으면 Canvas가 400으로 거부한다.
-  const canvasResp = await followWithJar(`${MEDLMS_BASE}/login/canvas`, jar, {
-    method: 'POST',
-    body: form,
-    referer: resp.url,
-  })
-  dbg?.push(`2차 canvas: ${canvasResp.status} url=${canvasResp.url.slice(0, 50)}`)
+  await followWithJar(`${MEDLMS_BASE}/login/canvas`, jar, { method: 'POST', body: form, referer: resp.url })
 
   // 3차: 다시 다운로드 → 이제 파일
-  const final = await followWithJar(downloadUrl, jar, { referer: `${MEDLMS_BASE}/learningx/dashboard` })
-  dbg?.push(`3차: ${final.status} ${(final.headers.get('content-type') ?? '').slice(0, 20)}`)
-  return final
+  return followWithJar(downloadUrl, jar, { referer: `${MEDLMS_BASE}/learningx/dashboard` })
 }
 
 // ── commons content.php 해석 ────────────────────────────────────────
@@ -240,8 +226,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'url 파라미터가 필요합니다' }, { status: 400 })
   }
   const filename = req.nextUrl.searchParams.get('filename') ?? ''
-  const debug = req.nextUrl.searchParams.get('debug') === '1'
-  const dbg: string[] = []
 
   if (!isAllowedHost(url)) {
     return NextResponse.json({ error: '허용되지 않는 도메인입니다' }, { status: 403 })
@@ -258,27 +242,16 @@ export async function GET(req: NextRequest) {
       resp = await fetchWithRetry(target.url, session.token, session.commonsCookie ?? '')
     } else if (needsCanvas(url)) {
       // 강의콘텐츠/과제 본문 첨부: Canvas 재로그인 후 다운로드
-      dbg.push(`authCookie len=${(session.authCookie ?? '').length}, studentId=${session.studentId ? 'set' : 'MISSING'}`)
-      resp = await canvasDownload(url, session.token, session.authCookie ?? '', session.studentId, dbg)
+      resp = await canvasDownload(url, session.token, session.authCookie ?? '', session.studentId)
     } else {
       // verifier 있는 medlms 파일, 게시판 첨부 등
       resp = await fetchWithRetry(url, session.token, session.commonsCookie ?? '')
     }
   } catch (e) {
-    if (debug) return NextResponse.json({ error: String(e), dbg }, { status: 200 })
     return NextResponse.json(
       { error: e instanceof Error ? e.message : '파일 다운로드 실패' },
       { status: 502 },
     )
-  }
-
-  if (debug) {
-    return NextResponse.json({
-      finalStatus: resp.status,
-      finalContentType: resp.headers.get('content-type'),
-      contentLength: resp.headers.get('content-length'),
-      dbg,
-    })
   }
 
   if (resp.status === 401) {
