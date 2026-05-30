@@ -189,33 +189,17 @@ export default function CourseFilesPage({
   //  - medlms 본문첨부(text_): 직접 다운로드 URL이라 클릭 제스처 내에서 바로 새 탭으로 연다
   //  - 실제 파일: 서버 프록시로 순차 다운로드 (진행률)
   //  - 영상: 서버에서 서명 URL을 해석해야 해(async) 일괄로 못 열어 개별 안내
+  // #5 동작 복구: 선택한 파일을 형식 구분 없이 그대로 순회 처리한다.
+  // (file → 서버 다운로드, medlms 본문첨부 → 새 탭, video → 서명 직링크 새 탭)
   async function downloadSelected() {
     const targets = files.filter((f) => selected.has(f.file_id))
-    const medlmsGroup = targets.filter((f) => kindOf(f) === 'medlms')
-    const fileGroup = targets.filter((f) => kindOf(f) === 'file')
-    const videoGroup = targets.filter((f) => kindOf(f) === 'video')
-
-    setOpenNotice(0)
-
-    // 1) medlms 본문첨부: 제스처 내에서 바로 새 탭 (한꺼번에 여러 개면 브라우저가 팝업 허용을 물을 수 있음)
-    for (const f of medlmsGroup) {
-      window.open(f.url, '_blank', 'noopener')
-      markDone(f.file_id)
+    setBulk({ active: true, done: 0, total: targets.length })
+    for (let i = 0; i < targets.length; i++) {
+      await handleOne(targets[i])
+      setBulk({ active: true, done: i + 1, total: targets.length })
+      await sleep(500)
     }
-
-    // 2) 실제 파일: 순차 다운로드
-    if (fileGroup.length) {
-      setBulk({ active: true, done: 0, total: fileGroup.length })
-      for (let i = 0; i < fileGroup.length; i++) {
-        await handleOne(fileGroup[i])
-        setBulk({ active: true, done: i + 1, total: fileGroup.length })
-        await sleep(500)
-      }
-      setBulk({ active: false, done: 0, total: 0 })
-    }
-
-    // 3) 영상만 개별 안내 (서버 해석 필요)
-    if (videoGroup.length) setOpenNotice(videoGroup.length)
+    setBulk({ active: false, done: 0, total: 0 })
   }
 
   const allSelected = selected.size === files.length && files.length > 0

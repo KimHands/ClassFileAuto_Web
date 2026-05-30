@@ -27,14 +27,6 @@ export class CookieJar {
     return this.store.get(name)
   }
 
-  // "k=v; k2=v2" 문자열을 jar에 주입 (세션에 저장해둔 쿠키 복원용)
-  seed(cookieStr: string): void {
-    for (const part of cookieStr.split(/;\s*/)) {
-      const i = part.indexOf('=')
-      if (i > 0) this.store.set(part.slice(0, i).trim(), part.slice(i + 1))
-    }
-  }
-
   keys(): Set<string> {
     return new Set(this.store.keys())
   }

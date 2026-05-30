@@ -11,7 +11,6 @@ export interface SessionData {
   userId: string
   studentId: string
   commonsCookie: string  // commons.sch.ac.kr PHP 세션 쿠키
-  authCookie: string     // 다운로드 Canvas 재로그인용 SSO 쿠키
 }
 
 export const sessionOptions: SessionOptions = {

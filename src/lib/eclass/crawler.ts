@@ -38,11 +38,14 @@ export interface Attachment {
   via?: 'proxy' | 'browser'
 }
 
-// 다운로드 경로 판별. 모든 출처를 서버 프록시로 처리한다:
-// - commons content.php: 다운로드 시점에 verifier/영상 URL 해석
-// - medlms /files: verifier 있으면 그대로, 없으면(강의콘텐츠/과제 본문 첨부)
-//   다운로드 라우트가 Canvas 재로그인으로 받아온다
-function downloadVia(): 'proxy' | 'browser' {
+// 다운로드 경로 판별.
+// - commons content.php: 다운로드 시점에 verifier URL을 해석하므로 proxy 가능
+// - medlms /files/.../download: verifier가 있으면 proxy 가능, 없으면 Canvas 세션(JS)이 필요해 browser
+function downloadVia(url: string): 'proxy' | 'browser' {
+  if (url.includes('/uniplayer_support/content.php')) return 'proxy'
+  if (url.includes('/files/') && url.includes('/download')) {
+    return url.includes('verifier=') ? 'proxy' : 'browser'
+  }
   return 'proxy'
 }
 
@@ -129,7 +132,7 @@ export async function fetchAttachments(
   for (const att of [...content, ...board, ...assignment]) {
     if (!seen.has(att.file_id)) {
       seen.add(att.file_id)
-      unique.push({ ...att, via: downloadVia() })
+      unique.push({ ...att, via: downloadVia(att.url) })
     }
   }
   return unique
