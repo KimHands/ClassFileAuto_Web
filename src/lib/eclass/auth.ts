@@ -54,9 +54,23 @@ export interface LoginResult {
   token?: string
   userId?: string
   commonsCookie?: string
+  authCookie?: string // 다운로드 시 Canvas 재로그인에 필요한 SSO 쿠키들
   error?: string
   errorType?: 'credentials' | 'server'
 }
+
+// medlms 파일 다운로드는 Canvas 세션 재수립(SSO 바운스)이 필요하다.
+// 그 바운스를 무인증으로 통과시키는 데 필요한 SSO/eclass 쿠키들을 보관한다.
+const AUTH_COOKIE_NAMES = [
+  'xn_sso_pses',
+  'PASSNI_LOGIN_COOKIE',
+  'PASSNI_LOGIN_COOKIE_TIMEOUT',
+  'SCHSSOOAUTHID',
+  'SCHSSOUSERIDV',
+  'SCHQS',
+  '_csrf_token',
+  'log_session_id',
+]
 
 export async function login(studentId: string, password: string): Promise<LoginResult> {
   const jar = new CookieJar()
@@ -140,5 +154,13 @@ export async function login(studentId: string, password: string): Promise<LoginR
   }
   const commonsCookie = jar.newCookiesSince(beforeKeys)
 
-  return { success: true, token, userId, commonsCookie }
+  // 다운로드 Canvas 재로그인용 SSO 쿠키 수집
+  const authCookie = AUTH_COOKIE_NAMES.map((n) => {
+    const v = jar.get(n)
+    return v ? `${n}=${v}` : ''
+  })
+    .filter(Boolean)
+    .join('; ')
+
+  return { success: true, token, userId, commonsCookie, authCookie }
 }
