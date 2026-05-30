@@ -140,8 +140,9 @@ export default function CourseFilesPage({
       const proxyUrl = `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.filename)}`
       const res = await fetch(proxyUrl)
 
+      // 다운로드 401은 그 파일만 실패 처리한다 (로그아웃·페이지 이동 금지).
       if (res.status === 401) {
-        router.push('/')
+        setFileError(file.file_id, '받을 수 없는 파일입니다 (인증). 새로고침 후 다시 시도해보세요.')
         return false
       }
 
