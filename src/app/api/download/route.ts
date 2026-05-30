@@ -168,7 +168,12 @@ async function canvasDownload(
     'pseudonym_session[password]': password,
     'pseudonym_session[remember_me]': '0',
   }).toString()
-  const canvasResp = await followWithJar(`${MEDLMS_BASE}/login/canvas`, jar, { method: 'POST', body: form })
+  // Referer(result 페이지)가 없으면 Canvas가 400으로 거부한다.
+  const canvasResp = await followWithJar(`${MEDLMS_BASE}/login/canvas`, jar, {
+    method: 'POST',
+    body: form,
+    referer: resp.url,
+  })
   dbg?.push(`2차 canvas: ${canvasResp.status} url=${canvasResp.url.slice(0, 50)}`)
 
   // 3차: 다시 다운로드 → 이제 파일
