@@ -54,7 +54,6 @@ export async function POST(req: NextRequest) {
   session.userId = result.userId!
   session.studentId = studentId
   session.commonsCookie = result.commonsCookie ?? ''
-  session.authCookie = result.authCookie ?? ''
   await session.save()
 
   return NextResponse.json({ success: true })
