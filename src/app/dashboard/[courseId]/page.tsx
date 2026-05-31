@@ -324,9 +324,9 @@ export default function CourseFilesPage({
                         className="h-4 w-4 shrink-0 accent-blue-500"
                       />
 
-                      {/* 형식 뱃지 */}
+                      {/* 형식 뱃지 (모바일에서도 노출) */}
                       <span
-                        className={`hidden h-9 w-11 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold sm:flex ${badge.cls}`}
+                        className={`flex h-9 w-11 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ${badge.cls}`}
                       >
                         {badge.label}
                       </span>

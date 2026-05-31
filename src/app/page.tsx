@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [showPw, setShowPw] = useState(false)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -52,6 +53,8 @@ export default function LoginPage() {
             <input
               id="studentId"
               type="text"
+              inputMode="numeric"
+              autoComplete="username"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               placeholder="20231234"
@@ -64,14 +67,36 @@ export default function LoginPage() {
             <label className="mb-1.5 block text-sm text-slate-300" htmlFor="password">
               비밀번호
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full rounded-lg bg-slate-700 px-3 py-2.5 text-white placeholder-slate-500 outline-none ring-1 ring-slate-600 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPw ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full rounded-lg bg-slate-700 px-3 py-2.5 pr-11 text-white placeholder-slate-500 outline-none ring-1 ring-slate-600 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 표시'}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 transition hover:text-slate-200"
+              >
+                {showPw ? (
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                    <path d="M3 3l14 14" strokeLinecap="round" />
+                    <path d="M8.5 8.6a2.1 2.1 0 002.9 2.9" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6.4 5.5A8.6 8.6 0 0110 4.5c5 0 7.5 5.5 7.5 5.5a13 13 0 01-2 2.7M4.3 6.4A13 13 0 002.5 10S5 15.5 10 15.5c.9 0 1.7-.15 2.4-.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                    <path d="M2.5 10S5 4.5 10 4.5 17.5 10 17.5 10 15 15.5 10 15.5 2.5 10 2.5 10Z" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="10" cy="10" r="2.3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* 개인정보 제3자 제공 동의 (개인정보보호법 제17조 제1항 제1호) */}
