@@ -73,7 +73,7 @@ export default function DashboardPage() {
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-800/50 bg-red-900/30 p-4 text-sm text-red-300">
+          <div role="alert" className="rounded-xl border border-red-800/50 bg-red-900/30 p-4 text-sm text-red-300">
             {error}
           </div>
         )}

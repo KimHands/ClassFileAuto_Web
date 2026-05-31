@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useRef, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -53,6 +53,42 @@ function typeBadge(filename: string): { label: string; cls: string } {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// 인라인 SVG 아이콘 (유니코드 글리프 대체, 다크 테마 currentColor)
+function IconDownload() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M10 3.5v8M6.5 8L10 11.5 13.5 8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 15.5h12" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconExternal() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M8 5H5.5A1.5 1.5 0 004 6.5v8A1.5 1.5 0 005.5 16h8a1.5 1.5 0 001.5-1.5V12" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 4h4v4M16 4l-7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function IconCheck() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M4.5 10.5l3.5 3.5 7-8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function IconWarn() {
+  return (
+    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M10 3.5l7 12.5H3l7-12.5Z" strokeLinejoin="round" />
+      <path d="M10 8.5v3.5M10 14h.01" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 export default function CourseFilesPage({
   params,
@@ -207,6 +243,13 @@ export default function CourseFilesPage({
   }
 
   const allSelected = selected.size === files.length && files.length > 0
+  const someSelected = selected.size > 0 && !allSelected
+
+  // 전체선택 체크박스: 일부만 선택된 경우 indeterminate 표시
+  const selectAllRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected
+  }, [someSelected])
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -236,7 +279,7 @@ export default function CourseFilesPage({
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-800/50 bg-red-900/30 p-4 text-sm text-red-300">
+          <div role="alert" className="rounded-xl border border-red-800/50 bg-red-900/30 p-4 text-sm text-red-300">
             {error}
           </div>
         )}
@@ -245,19 +288,16 @@ export default function CourseFilesPage({
           <>
             {/* 액션 바 */}
             <div className="mb-4 flex items-center justify-between gap-3">
-              <button
-                onClick={toggleAll}
-                className="flex items-center gap-2 text-sm text-slate-300 transition hover:text-white"
-              >
-                <span
-                  className={`flex h-4 w-4 items-center justify-center rounded border ${
-                    allSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-600'
-                  }`}
-                >
-                  {allSelected && <span className="text-[10px] text-white">✓</span>}
-                </span>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300 transition hover:text-white">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="h-4 w-4 accent-blue-500"
+                />
                 {allSelected ? '전체 해제' : '전체 선택'}
-              </button>
+              </label>
 
               <button
                 onClick={downloadSelected}
@@ -277,20 +317,23 @@ export default function CourseFilesPage({
 
             {/* 일괄 완료 후 ↗ 파일 안내 */}
             {openNotice > 0 && (
-              <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-900/25 px-3 py-2 text-xs text-amber-200/90">
-                <span>↗</span>
+              <div role="alert" className="mb-3 flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-900/25 px-3 py-2 text-xs text-amber-200/90">
+                <span className="mt-0.5 shrink-0 text-amber-300/90"><IconExternal /></span>
                 <span>
                   영상·강의콘텐츠 <b>{openNotice}개</b>는 서버가 미리 받아둘 수 없어, 아래 목록에서{' '}
-                  <b>↗ 버튼을 하나씩</b> 눌러 새 탭에서 받아주세요.
+                  <b>열기 버튼을 하나씩</b> 눌러 새 탭에서 받아주세요.
                 </span>
               </div>
             )}
 
             {/* ↗ 안내 배너 */}
             {hasOpenKind && openNotice === 0 && (
-              <p className="mb-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2 text-xs text-slate-400">
-                <span className="text-amber-300/90">↗</span> 표시(영상·강의콘텐츠 본문 첨부)는 서버가 대신 받을 수 없어
-                medlms 새 탭에서 열립니다. 여러 개를 한꺼번에 받으면 브라우저가 <b>팝업 허용</b>을 물을 수 있어요.
+              <p className="mb-3 flex items-start gap-2 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2 text-xs text-slate-400">
+                <span className="mt-0.5 shrink-0 text-amber-300/90"><IconExternal /></span>
+                <span>
+                  열기 표시(영상·강의콘텐츠 본문 첨부)는 서버가 대신 받을 수 없어 medlms 새 탭에서
+                  열립니다. 여러 개를 한꺼번에 받으면 브라우저가 <b>팝업 허용</b>을 물을 수 있어요.
+                </span>
               </p>
             )}
 
@@ -339,7 +382,11 @@ export default function CourseFilesPage({
                           )}
                           {kind === 'video' && <span className="text-purple-300/80">영상 · 새 탭</span>}
                           {kind === 'medlms' && <span className="text-amber-300/80">medlms에서 열림</span>}
-                          {err && <span className="text-red-400">⚠ {err}</span>}
+                          {err && (
+                            <span role="alert" className="flex items-center gap-1 text-red-400">
+                              <IconWarn /> {err}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -348,6 +395,7 @@ export default function CourseFilesPage({
                         onClick={() => handleOne(file)}
                         disabled={isDown}
                         title={kind === 'file' ? '다운로드' : '새 탭에서 열기'}
+                        aria-label={`${file.filename} ${kind === 'file' ? '다운로드' : '새 탭에서 열기'}`}
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-700 hover:text-white disabled:opacity-40 ${
                           isDone ? 'text-emerald-400' : ''
                         }`}
@@ -355,11 +403,11 @@ export default function CourseFilesPage({
                         {isDown ? (
                           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-500 border-t-white" />
                         ) : isDone ? (
-                          '✓'
+                          <IconCheck />
                         ) : kind === 'file' ? (
-                          '⬇'
+                          <IconDownload />
                         ) : (
-                          '↗'
+                          <IconExternal />
                         )}
                       </button>
                     </li>
