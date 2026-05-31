@@ -75,36 +75,53 @@ export default function LoginPage() {
           </div>
 
           {/* 개인정보 제3자 제공 동의 (개인정보보호법 제17조 제1항 제1호) */}
-          <div className="mb-4 rounded-lg bg-slate-700/50 p-3 text-xs text-slate-400">
-            <p className="mb-1 font-semibold text-slate-300">개인정보 제3자 제공 동의</p>
-            <p className="mb-2 text-slate-500">
-              이 서비스는 Vercel 외부 서버를 통해 동작합니다. 로그인 시 학번·비밀번호가
-              해당 서버를 경유하므로 아래 내용을 확인 후 동의해 주세요.
-            </p>
-            <table className="w-full border-collapse text-xs">
-              <tbody>
-                <tr className="border-b border-slate-600">
-                  <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">제공받는 자</td>
-                  <td className="py-1">Vercel Inc. (외부 서버, 일본 도쿄)</td>
-                </tr>
-                <tr className="border-b border-slate-600">
-                  <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">제공 항목</td>
-                  <td className="py-1">학번, 비밀번호 (로그인 처리 후 즉시 파기)</td>
-                </tr>
-                <tr className="border-b border-slate-600">
-                  <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">이용 목적</td>
-                  <td className="py-1">SCH Eclass 강의자료 다운로드 서비스 제공</td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">보유 기간</td>
-                  <td className="py-1">세션 유지 시간 (최대 8시간, 서버 미저장)</td>
-                </tr>
-              </tbody>
-            </table>
-            <p className="mt-2 text-slate-500">
-              동의를 거부할 수 있으며, 거부 시 서비스 이용이 불가합니다.
-            </p>
-            <label className="mt-2 flex cursor-pointer items-center gap-2">
+          {/* 상세 고지는 접이식으로 두어 폼을 압도하지 않게 하고, 체크박스는 항상 노출한다. */}
+          <div className="mb-4 rounded-lg bg-slate-700/50 text-xs text-slate-400">
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 font-semibold text-slate-300 [&::-webkit-details-marker]:hidden">
+                개인정보 제3자 제공 동의
+                <svg
+                  className="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </summary>
+              <div className="border-t border-slate-600/60 px-3 pb-3 pt-2">
+                <p className="mb-2 text-slate-500">
+                  이 서비스는 Vercel 외부 서버를 통해 동작합니다. 로그인 시 학번·비밀번호가
+                  해당 서버를 경유하므로 아래 내용을 확인 후 동의해 주세요.
+                </p>
+                <table className="w-full border-collapse text-xs">
+                  <tbody>
+                    <tr className="border-b border-slate-600">
+                      <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">제공받는 자</td>
+                      <td className="py-1">Vercel Inc. (외부 서버, 일본 도쿄)</td>
+                    </tr>
+                    <tr className="border-b border-slate-600">
+                      <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">제공 항목</td>
+                      <td className="py-1">학번, 비밀번호 (로그인 처리 후 즉시 파기)</td>
+                    </tr>
+                    <tr className="border-b border-slate-600">
+                      <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">이용 목적</td>
+                      <td className="py-1">SCH Eclass 강의자료 다운로드 서비스 제공</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 pr-2 text-slate-500 whitespace-nowrap">보유 기간</td>
+                      <td className="py-1">세션 유지 시간 (최대 8시간, 서버 미저장)</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="mt-2 text-slate-500">
+                  동의를 거부할 수 있으며, 거부 시 서비스 이용이 불가합니다.
+                </p>
+              </div>
+            </details>
+            <label className="flex cursor-pointer items-center gap-2 border-t border-slate-600/60 px-3 py-2.5">
               <input
                 type="checkbox"
                 checked={agreed}
@@ -121,10 +138,16 @@ export default function LoginPage() {
             </div>
           )}
 
+          {!agreed && (
+            <p className="mb-2 text-center text-xs text-amber-300/80">
+              로그인하려면 위 개인정보 제공 동의가 필요합니다
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={loading || !agreed}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
+            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>
