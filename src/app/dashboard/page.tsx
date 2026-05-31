@@ -49,27 +49,33 @@ export default function DashboardPage() {
   }, {})
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-950">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/80 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+      <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-900/90 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
           <span className="font-bold text-white">SCH Eclass 다운로더</span>
           <button
             onClick={handleLogout}
-            className="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-700 hover:text-white"
+            className="rounded-lg px-3 py-1.5 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white"
           >
             로그아웃
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
+      <main className="mx-auto max-w-3xl px-4 py-6">
         {loading && (
-          <div className="text-center text-slate-400">강의 목록 불러오는 중...</div>
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-800/60" />
+            ))}
+          </div>
         )}
 
         {error && (
-          <div className="rounded-xl bg-red-900/40 p-4 text-sm text-red-300">{error}</div>
+          <div className="rounded-xl border border-red-800/50 bg-red-900/30 p-4 text-sm text-red-300">
+            {error}
+          </div>
         )}
 
         {!loading && !error && (
