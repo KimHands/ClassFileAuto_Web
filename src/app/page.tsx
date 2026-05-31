@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Logo from '@/components/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -41,6 +42,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
+          <Logo className="mx-auto mb-3 h-14 w-14" />
           <h1 className="text-2xl font-bold text-white">SCH Eclass</h1>
           <p className="mt-1 text-sm text-slate-400">강의 자료 다운로더</p>
         </div>

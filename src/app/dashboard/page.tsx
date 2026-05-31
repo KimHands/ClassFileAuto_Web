@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Logo from '@/components/Logo'
 
 interface Course {
   id: string
@@ -53,7 +54,10 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-900/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <span className="font-bold text-white">SCH Eclass 다운로더</span>
+          <span className="flex items-center gap-2">
+            <Logo className="h-7 w-7" />
+            <span className="font-bold text-white">SCH Eclass 다운로더</span>
+          </span>
           <button
             onClick={handleLogout}
             className="rounded-lg px-3 py-1.5 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white"

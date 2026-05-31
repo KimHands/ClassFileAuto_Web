@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.svg" width="96" height="96" alt="SCH Eclass 다운로더 로고" />
+</p>
+
 # SCH Eclass 파일 다운로더 (Web)
 
 > 순천향대 Eclass(medlms.sch.ac.kr) 강의 자료를 **브라우저에서** 모아 다운로드. SSO RSA 암호화 · iron-session 기반 보안 설계
