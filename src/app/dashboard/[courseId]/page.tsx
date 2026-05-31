@@ -194,6 +194,7 @@ export default function CourseFilesPage({
   // (file → 서버 다운로드, medlms 본문첨부 → 새 탭, video → 서명 직링크 새 탭)
   async function downloadSelected() {
     const targets = files.filter((f) => selected.has(f.file_id))
+    const openCount = targets.filter((f) => kindOf(f) !== 'file').length
     setBulk({ active: true, done: 0, total: targets.length })
     for (let i = 0; i < targets.length; i++) {
       await handleOne(targets[i])
@@ -201,6 +202,8 @@ export default function CourseFilesPage({
       await sleep(500)
     }
     setBulk({ active: false, done: 0, total: 0 })
+    // 일괄 처리한 영상·본문첨부는 팝업 차단으로 일부만 열릴 수 있어 완료 후 안내한다.
+    setOpenNotice(openCount)
   }
 
   const allSelected = selected.size === files.length && files.length > 0
@@ -277,7 +280,7 @@ export default function CourseFilesPage({
               <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-900/25 px-3 py-2 text-xs text-amber-200/90">
                 <span>↗</span>
                 <span>
-                  영상 <b>{openNotice}개</b>는 서버가 미리 받아둘 수 없어, 아래 목록에서{' '}
+                  영상·강의콘텐츠 <b>{openNotice}개</b>는 서버가 미리 받아둘 수 없어, 아래 목록에서{' '}
                   <b>↗ 버튼을 하나씩</b> 눌러 새 탭에서 받아주세요.
                 </span>
               </div>
